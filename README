@@ -1,0 +1,5 @@
+Copyright (c) 2014 Chris Morrison <chris-morrison@cyberservices.com>
+
+This is rmlinks a lightweight command line utility that will take a file and a root directory
+and search beneath the given root (and optionally any directories thereunder) for any hard
+(and optionally) symbolic links to the file and remove them.
