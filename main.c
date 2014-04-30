@@ -29,10 +29,12 @@
 #include <dirent.h>
 #include <config.h>
 
+#define BUFF_SIZE 4096
+
 int recurse = 0;
 int softlinks = 0;
-char *search_dir = NULL;
-char *filename = NULL;
+char search_dir[BUFF_SIZE];
+char filename[BUFF_SIZE];
 ino_t finode = 0;
 int retval = 0;
 
@@ -90,8 +92,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	filename = argv[argc - 1];
-	search_dir = argv[argc - 2];
+	if (realpath(argv[argc - 1], filename) == NULL)
+    {
+        fprintf(stderr, "An unexpected error occurred.\n");
+        return 2;
+    }
+	if (realpath(argv[argc - 2], search_dir) == NULL)
+    {
+        fprintf(stderr, "An unexpected error occurred.\n");
+        return 2;
+    }    
 
 	nlen = strlen(search_dir) - 1;
 	if (search_dir[nlen] == '/') search_dir[nlen] = '\0';
@@ -148,7 +158,9 @@ void print_usage (int help)
 
 void print_version(void)
 {
-	printf("%s version %s\nCopyright (c) 2014 Chris Morrison\n", PACKAGE, VERSION);
+	printf("%s version %s\nCopyright (C) 2014 Chris Morrison\n", PACKAGE, VERSION);
+	printf("License GPLv3+: GNU GPL version 3 or later <https://www.gnu.org/licenses/gpl-3.0.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.");
+	printf("\n\nWritten by Chris Morrison <chris-morrison@cyberservices.com>\n");
 }
 
 void search_directory(const char *dir_path)
