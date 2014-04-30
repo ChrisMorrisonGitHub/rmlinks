@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <config.h>
 
 int recurse = 0;
 int softlinks = 0;
@@ -36,6 +37,7 @@ ino_t finode = 0;
 int retval = 0;
 
 void print_usage(int help);
+void print_version(void);
 void search_directory(const char *dir_path);
 
 int main(int argc, char *argv[])
@@ -47,8 +49,14 @@ int main(int argc, char *argv[])
 
 	if ((argc == 2) && (argv[1][1] == 'h'))
 	{
-		print_usage (1);
-		return 2;
+		print_usage(1);
+		return 0;
+	}
+
+	if ((argc == 2) && (argv[1][1] == 'v'))
+	{
+		print_version();
+		return 0;
 	}
 
 	if (argc < 3)
@@ -57,7 +65,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	while ((c = getopt (argc, argv, "rsh")) != -1)
+	while ((c = getopt (argc, argv, "rshv")) != -1)
 	{
 		switch (c)
 		{
@@ -69,6 +77,10 @@ int main(int argc, char *argv[])
 				break;
 			case 'h':
 				print_usage(1);
+				return 0;
+			case 'v':
+				print_version();
+				return 0;
 			case '?':
 				fprintf (stderr, "Unknown option `-%c'.\n", optopt);
 				return 2;
@@ -132,6 +144,11 @@ void print_usage (int help)
 		fprintf(stdout, "  -s           Remove symbolic links to FILE as well as hard links.\n");
 		fprintf(stdout, "\nDIR must be a directory and FILE must be a regular file.\n");
 	}
+}
+
+void print_version(void)
+{
+	printf("%s version %s\nCopyright (c) 2014 Chris Morrison\n", PACKAGE, VERSION);
 }
 
 void search_directory(const char *dir_path)
