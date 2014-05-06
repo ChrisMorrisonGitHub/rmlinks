@@ -27,7 +27,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
-#include <config.h>
+#include "config.h"
 
 #define BUFF_SIZE 4096
 
