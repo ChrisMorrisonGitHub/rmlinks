@@ -1,5 +1,32 @@
 Copyright (c) 2014 Chris Morrison <chris-morrison@cyberservices.com>
 
-This is rmlinks a lightweight command line utility that will take a file and a root directory
-and search beneath the given root (and optionally any directories thereunder) for any hard
-(and optionally) symbolic links to the file and remove them.
+This is rmlinks a lightweight command line utility that will take a file and
+a root directory and search beneath the given root (and optionally any
+directories thereunder) for any hard (and optionally) symbolic links to the
+file and remove them.
+
+Installation
+------------
+
+As usual for GNU packages:
+
+    $ ./configure --prefix=/usr
+    $ make
+    $ make install
+
+Copyright
+---------
+
+The rmlinks program and its sources are covered by the GNU GPL (General
+Public License) version 3, see the COPYING file for details.
+
+Download
+--------
+
+    https://github.com/ChrisMorrisonGithub/rmlinks
+
+Bug reports to
+--------------
+
+    <chris-morrison@cyberservices.com>
+
