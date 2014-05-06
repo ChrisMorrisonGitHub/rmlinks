@@ -1,0 +1,81 @@
+.TH "rmlinks" "1" "0.1.0" "" "General commands"
+.SH "NAME"
+rmlinks - removes all hard and soft links to a file
+.br
+.SH "SYNTAX"
+rmlinks [-rs] \fIdirectory\fR \fIfile\fR
+.br
+rmlinks -h
+.br
+rmlinks -v
+.br
+
+.SH "DESCRIPTION"
+Scans \fIdirectory\fR for all hard (and optionally) symbolic links to \fIfile\fR
+.br
+and removes them, leaving \fIfile\fR as the only link to its inode.
+.br
+.SH "OPTIONS"
+-r
+.br
+		Recursively search all sub-directories below \fIdirectory\fR.
+.br
+		
+.br
+-s		
+.br
+		Additionally remove any encountered symbolic
+.br
+		links to \fIfile\fR.
+.br
+
+-h
+.br
+		Output help information and exit.
+.br
+
+-v
+.br
+		Output version information and exit.
+.br
+		
+.br
+\fIdirectory\fR
+.br
+		The directory to search for additional links to \fIfile\fR.
+.br
+		
+.br
+\fIfile\fR
+.br
+		The file to find and remove additional links to.
+.br
+.SH "EXAMPLES"
+rmlinks /home/me myfile.txt
+.br
+
+To search \fI/home/me\fR for all hard links to \fImyfile.txt\fR and remove them.
+.br
+
+rmlinks -r /home/me myfile.txt
+.br
+
+To search \fI/home/me\fR and all sub-directories there-under, for all
+.br
+hard links to \fImyfile.txt\fR and remove them.
+.br
+
+rmlinks -rs /home/me myfile.txt
+.br
+
+To search \fI/home/me\fR and all sub-directories there-under, for all
+.br
+hard and symbolic links to \fImyfile.txt\fR and remove them.
+.br
+
+.SH "AUTHORS"
+Chris Morrison <chris-morrison@cyberservices.com>
+.br
+.SH "SEE ALSO"
+link(1) unlink(1)
+.br
