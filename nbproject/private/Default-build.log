@@ -1,0 +1,5 @@
+/usr/bin/make  all-am
+make[1]: Entering directory `/home/chris/rmlinks'
+  CC     main.o
+  CCLD   rmlinks
+make[1]: Leaving directory `/home/chris/rmlinks'
