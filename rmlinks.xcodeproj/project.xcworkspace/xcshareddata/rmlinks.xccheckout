@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>BAF9B23D-46DE-4888-B717-6DA6A4F7EC8E</string>
+	<key>IDESourceControlProjectName</key>
+	<string>rmlinks</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>AAFE1AD0-B9BD-4544-99A7-7D8F9ED860A6</key>
+		<string>https://github.com/ChrisMorrisonGitHub/rmlinks.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>rmlinks/rmlinks.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>AAFE1AD0-B9BD-4544-99A7-7D8F9ED860A6</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/ChrisMorrisonGitHub/rmlinks.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>AAFE1AD0-B9BD-4544-99A7-7D8F9ED860A6</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>AAFE1AD0-B9BD-4544-99A7-7D8F9ED860A6</string>
+			<key>IDESourceControlWCCName</key>
+			<string>rmlinks</string>
+		</dict>
+	</array>
+</dict>
+</plist>
