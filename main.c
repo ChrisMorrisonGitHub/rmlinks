@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <pthread.h>
 #include "config.h"
 
 #define BUFF_SIZE 4096
@@ -36,11 +37,15 @@ int softlinks = 0;
 char search_dir[BUFF_SIZE];
 char filename[BUFF_SIZE];
 ino_t finode = 0;
-int retval = 0;
+unsigned int thread_count = 0;
+
+pthread_mutex_t thread_count_mutex;
+pthread_mutex_t stdout_mutex;
+pthread_attr_t attr;
 
 void print_usage(int help);
 void print_version(void);
-void search_directory(const char *dir_path);
+void *search_directory(void *param);
 
 int main(int argc, char *argv[])
 {
@@ -48,6 +53,9 @@ int main(int argc, char *argv[])
     struct stat buff1;
     struct stat buff2;
     size_t nlen = 0;
+    pthread_t master_thread;
+    int link_count = 0;
+    int post_link_count = 0;
     
     if ((argc == 2) && (argv[1][1] == 'h'))
     {
@@ -64,7 +72,7 @@ int main(int argc, char *argv[])
     if (argc < 3)
     {
         print_usage(0);
-        return 2;
+        return 1;
     }
     
     while ((c = getopt(argc, argv, "rshv")) != -1)
@@ -88,19 +96,19 @@ int main(int argc, char *argv[])
                 return 2;
             default:
                 print_usage(0);
-                return 2;
+                return 1;
         }
     }
     
     if (realpath(argv[argc - 1], filename) == NULL)
     {
         fprintf(stderr, "Failed to resolve full path for '%s'. Please check that it exists and is accessable.\n", argv[argc - 1]);
-        return 2;
+        return 1;
     }
     if (realpath(argv[argc - 2], search_dir) == NULL)
     {
         fprintf(stderr, "Failed to resolve full path for '%s'. Please check that it exists and is accessable.\n", argv[argc - 2]);
-        return 2;
+        return 1;
     }
     
     nlen = strlen(search_dir) - 1;
@@ -109,38 +117,63 @@ int main(int argc, char *argv[])
     if (stat(search_dir, &buff1) == -1)
     {
         fprintf(stderr, "rmlinks: could not stat %s (%s).\n", search_dir, strerror(errno));
-        return 2;
+        return 1;
     }
     
     if (S_ISDIR(buff1.st_mode) == 0)
     {
         fprintf(stderr, "rmlinks: %s is not a directory.\n", search_dir);
-        return 2;
+        return 1;
     }
     
     if (lstat(filename, &buff2) == -1)
     {
         fprintf(stderr, "rmlinks: could not stat %s (%s).\n", filename, strerror(errno));
-        return 2;
+        return 1;
     }
     
     if (S_ISREG(buff2.st_mode) == 0)
     {
         fprintf(stderr, "rmlinks: %s is not a regular file.\n", filename);
-        return 2;
+        return 1;
     }
     
-    if (buff2.st_nlink == 1)
+    link_count = buff2.st_nlink;
+    if (link_count == 1)
     {
         fprintf(stderr, "rmlinks: there are no hardlinks to %s.\n", filename);
-        return 2;
+        return 1;
     }
-    
     finode = buff2.st_ino;
     
-    search_directory(search_dir);
+    pthread_mutex_init(&thread_count_mutex, NULL);
+    pthread_mutex_init(&stdout_mutex, NULL);
+    pthread_attr_setstacksize(&attr, 2097152);
     
-    return retval;
+    // Start the search.
+    pthread_create(&master_thread, &attr, search_directory, search_dir);
+    
+    while (thread_count > 0)
+    {
+        sleep(1);
+    }
+    
+    pthread_attr_destroy(&attr);
+    pthread_mutex_destroy(&thread_count_mutex);
+    pthread_mutex_destroy(&stdout_mutex);
+    
+    // Restat the file
+    if (lstat(filename, &buff2) == -1)
+    {
+        fprintf(stderr, "rmlinks: could not re-stat %s (%s).\n", filename, strerror(errno));
+        return 1;
+    }
+    post_link_count = buff2.st_nlink;
+    
+    fprintf(stdout, "Successfully removed %d of %d links\n", post_link_count, link_count);
+    if (post_link_count > 1) return 1;
+    
+    return 0;
 }
 
 void print_usage(int help)
@@ -163,14 +196,20 @@ void print_version(void)
     printf("\n\nWritten by Chris Morrison <chris-morrison@cyberservices.com>\n");
 }
 
-void search_directory(const char *dir_path)
+void *search_directory(void *param)
 {
+    char *dir_path = (char *)param;
     DIR *dir;
     struct dirent *ent;
     char path[4096];
     struct stat sb;
     char *d_name = NULL;
     char buffer[4096];
+    pthread_t thread;
+    
+    pthread_mutex_lock(&thread_count_mutex);
+    thread_count++;
+    pthread_mutex_unlock(&thread_count_mutex);
     
     dir = opendir(dir_path);
     if (dir != NULL)
@@ -182,19 +221,25 @@ void search_directory(const char *dir_path)
             snprintf(path, 4096, "%s/%s", dir_path, d_name);
             
             if (lstat(path, &sb) == -1) continue;
-            if ((S_ISDIR(sb.st_mode) != 0) && (recurse == 1)) search_directory(path);
+            if ((S_ISDIR(sb.st_mode) != 0) && (recurse == 1))
+            {
+                pthread_create(&thread, &attr, search_directory, path);
+            }
             if ((S_ISREG(sb.st_mode) != 0) && (sb.st_ino == finode))
             {
                 if (strcmp(path, filename) != 0)
                 {
                     if (unlink(path) != 0)
                     {
+                        pthread_mutex_lock(&stdout_mutex);
                         fprintf(stderr, "rmlinks: failed to unlink %s (%s).\n", path, strerror(errno));
-                        retval = 1;
+                        pthread_mutex_unlock(&stdout_mutex);
                     }
                     else
                     {
-                        printf("Unlinked %s\n", path);
+                        pthread_mutex_lock(&stdout_mutex);
+                        fprintf(stdout, "Unlinked %s\n", path);
+                        pthread_mutex_unlock(&stdout_mutex);
                     }
                 }
             }
@@ -207,12 +252,15 @@ void search_directory(const char *dir_path)
                 {
                     if (unlink(path) != 0)
                     {
+                        pthread_mutex_lock(&stdout_mutex);
                         fprintf(stderr, "rmlinks: failed to remove symbolic link %s (%s).\n", path, strerror(errno));
-                        retval = 1;
+                        pthread_mutex_unlock(&stdout_mutex);
                     }
                     else
                     {
-                        printf("Removed symbolic link %s\n", path);
+                        pthread_mutex_lock(&stdout_mutex);
+                        fprintf(stdout, "Removed symbolic link %s\n", path);
+                        pthread_mutex_unlock(&stdout_mutex);
                     }
                 }
             }
@@ -221,13 +269,17 @@ void search_directory(const char *dir_path)
     }
     else
     {
+        pthread_mutex_lock(&stdout_mutex);
         fprintf(stderr, "rmlink: could not search %s (%s).\n", dir_path, strerror(errno));
-        
-        if (strcmp(dir_path, search_dir) == 0)
-            retval = 2; /* If there was an error searching the root then it was a non-starter and we should return 2 = fatal error. */
-        else
-            retval = 1;
+        pthread_mutex_unlock(&stdout_mutex);
     }
+    
+    pthread_mutex_lock(&thread_count_mutex);
+    thread_count--;
+    pthread_mutex_unlock(&thread_count_mutex);
+    
+    pthread_exit(NULL);
+    return NULL;
 }
 
 

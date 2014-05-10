@@ -1,4 +1,4 @@
-AC_INIT(rmlinks, 0.1.1)
+AC_INIT(rmlinks, 0.1.3)
 
 AC_CONFIG_HEADERS([config.h])
 
