@@ -14,5 +14,7 @@ rmlinks_SOURCES = \
 
 rmlinks_LDFLAGS = 
 
-rmlinks_LDADD = 
+#ifdef linux
+rmlinks_LDADD = -lpthread
+#endif
 
