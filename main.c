@@ -43,6 +43,7 @@ char search_dir[BUFF_SIZE];
 char search_file[BUFF_SIZE];
 ino_t finode = 0;
 unsigned int thread_count = 0;
+int down_tools = 0;
 
 pthread_mutex_t thread_count_mutex;
 pthread_mutex_t stdout_mutex;
@@ -172,22 +173,24 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to start the main thread (%s).\n", strerror(err_num));
         return 1;
     }
-    
+
     for (;;)
     {
-        // Restat the file
-        if (stat(search_file, &buff2) == -1)
+        if (down_tools == 0)
         {
-            fprintf(stderr, "rmlinks: could not re-stat the orignal search file.\n");
-            break;
+            // Restat the file
+            if (stat(search_file, &buff2) == -1)
+            {
+                fprintf(stderr, "rmlinks: could not re-stat the orignal search file.\n");
+                break;
+            }
+
+            post_link_count = buff2.st_nlink;
+            if (post_link_count == 1) down_tools = 1; // Set the global flag to make all the threads clean up and exit.
         }
-        post_link_count = buff2.st_nlink;
-        if (post_link_count == 1) break;
-        nanosleep((struct timespec[]){{0, 500000000}}, NULL);
+        nanosleep((struct timespec[]){{0, 100000000}}, NULL);
         if (thread_count == 0) break;
     }
-    
-print_result_and_exit:
     
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&thread_count_mutex);
@@ -236,6 +239,12 @@ void *search_directory(void *param)
     char *search_ptr = NULL;
     int err_num = 0;
     
+    if (down_tools == 1)
+    {
+        free(param);
+        return NULL;
+    }
+    
     entry = (struct dirent *)malloc(offsetof(struct dirent, d_name) + pathconf(search_path, _PC_NAME_MAX) + 1);
     if (entry == NULL)
     {
@@ -246,16 +255,27 @@ void *search_directory(void *param)
         pthread_exit(NULL);
         return NULL;
     }
-    
+
     pthread_mutex_lock(&thread_count_mutex);
     thread_count++;
     pthread_mutex_unlock(&thread_count_mutex);
-    
+
     dir = opendir(search_path);
     if (dir != NULL)
     {
         while ((readdir_r(dir, entry, &result) == 0) && result != NULL)
         {
+            // Check the global kill switch.
+            if (down_tools == 1)
+            {
+                free(param);
+                free(entry);
+                pthread_mutex_lock(&thread_count_mutex);
+                thread_count--;
+                pthread_mutex_unlock(&thread_count_mutex);
+                pthread_exit(NULL);
+                return NULL;
+            }
             filename = entry->d_name;
             if ((strcmp(filename, ".") == 0) || (strcmp(filename, "..") == 0)) continue;
             snprintf(pathname, BUFF_SIZE, "%s/%s", search_path, filename);
@@ -267,7 +287,7 @@ void *search_directory(void *param)
                 pthread_mutex_unlock(&stdout_mutex);
                 continue;
             }
-            if ((S_ISDIR(sb.st_mode) != 0) && (recurse == 1))
+            if ((S_ISDIR(sb.st_mode) != 0) && (recurse == 1) && (down_tools == 0))
             {
                 search_ptr = (char *)malloc(BUFF_SIZE);
                 if (search_ptr == NULL)

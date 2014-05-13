@@ -47,8 +47,6 @@
         </makeTool>
       </makefileType>
       <item path="main.c" ex="false" tool="0" flavor2="0">
-        <cTool flags="0">
-        </cTool>
       </item>
     </conf>
   </confs>

@@ -61,11 +61,14 @@
       <runprofile version="9">
         <runcommandpicklist>
           <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
+          <runcommandpicklistitem>"${OUTPUT_PATH}" /home/chris /home/chris/democracy.jpg</runcommandpicklistitem>
+          <runcommandpicklistitem>"${OUTPUT_PATH}" -r /home/chris /home/chris/democracy.jpg</runcommandpicklistitem>
         </runcommandpicklist>
-        <runcommand>"${OUTPUT_PATH}"</runcommand>
+        <runcommand>"${OUTPUT_PATH}" -r /home/chris /home/chris/democracy.jpg</runcommand>
         <rundir>.</rundir>
         <buildfirst>false</buildfirst>
-        <terminal-type>0</terminal-type>
+        <console-type>1</console-type>
+        <terminal-type>1</terminal-type>
         <remove-instrumentation>0</remove-instrumentation>
         <environment>
         </environment>
