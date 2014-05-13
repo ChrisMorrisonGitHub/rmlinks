@@ -33,6 +33,10 @@
 
 #define BUFF_SIZE 4096
 
+#if defined(__APPLE__) && defined(__MACH__) && !defined(_DARWIN_FEATURE_64_BIT_INODE)
+#define _DARWIN_FEATURE_64_BIT_INODE
+#endif
+
 int recurse = 0;
 int softlinks = 0;
 char search_dir[BUFF_SIZE];
@@ -57,6 +61,8 @@ int main(int argc, char *argv[])
     pthread_t master_thread;
     int link_count = 0;
     int post_link_count = 0;
+    char *search_ptr = NULL;
+    int err_num = 0;
     
     if ((argc == 2) && (argv[1][1] == 'h'))
     {
@@ -152,29 +158,44 @@ int main(int argc, char *argv[])
     pthread_attr_setstacksize(&attr, 2097152);
     
     // Start the search.
-    if (pthread_create(&master_thread, NULL, search_directory, (void *)search_dir) != 0)
+    search_ptr = (char *)malloc(BUFF_SIZE);
+    if (search_ptr == NULL)
     {
-        fprintf(stderr, "Failed to start the main thread.\n");
+        fprintf(stderr, "rmlinks: could not allocate memory to start main worker thread.\n");
+        return 1;
+    }
+    strncpy(search_ptr, search_dir, BUFF_SIZE);
+    err_num = pthread_create(&master_thread, NULL, search_directory, (void *)search_ptr);
+    if (errno != 0)
+    {
+        free(search_ptr);
+        fprintf(stderr, "Failed to start the main thread (%s).\n", strerror(err_num));
         return 1;
     }
     
-    do
+    for (;;)
     {
+        // Restat the file
+        if (stat(search_file, &buff2) == -1)
+        {
+            fprintf(stderr, "rmlinks: could not re-stat the orignal search file.\n");
+            break;
+        }
+        post_link_count = buff2.st_nlink;
+        if (post_link_count == 1) break;
         nanosleep((struct timespec[]){{0, 500000000}}, NULL);
-    } while (thread_count > 0);
+        if (thread_count == 0) break;
+    }
+    
+print_result_and_exit:
     
     pthread_attr_destroy(&attr);
     pthread_mutex_destroy(&thread_count_mutex);
     pthread_mutex_destroy(&stdout_mutex);
-    
-    // Restat the file
-    if (stat(search_file, &buff2) == -1)
-    {
-        fprintf(stderr, "rmlinks: could not re-stat %s (%s).\n", search_file, strerror(errno));
-        return 1;
-    }
-    post_link_count = buff2.st_nlink;
-    
+
+    // Do not count the actual file.
+    link_count--;
+    post_link_count--;
     fprintf(stdout, "Successfully removed %d of %d links\n", (link_count - post_link_count), link_count);
     if (post_link_count > 1) return 1;
     
@@ -212,10 +233,13 @@ void *search_directory(void *param)
     pthread_t thread;
     struct dirent *entry = NULL;
     struct dirent *result = NULL;
+    char *search_ptr = NULL;
+    int err_num = 0;
     
     entry = (struct dirent *)malloc(offsetof(struct dirent, d_name) + pathconf(search_path, _PC_NAME_MAX) + 1);
     if (entry == NULL)
     {
+        free(param);
         pthread_mutex_lock(&stdout_mutex);
         fprintf(stderr, "rmlinks: failed to allocate memory");
         pthread_mutex_unlock(&stdout_mutex);
@@ -245,17 +269,27 @@ void *search_directory(void *param)
             }
             if ((S_ISDIR(sb.st_mode) != 0) && (recurse == 1))
             {
-                if (pthread_create(&thread, NULL, search_directory, (void *)pathname) != 0)
+                search_ptr = (char *)malloc(BUFF_SIZE);
+                if (search_ptr == NULL)
                 {
                     pthread_mutex_lock(&stdout_mutex);
-                    fprintf(stderr, "rmlinks: failed start worker thread for directory %s\n", pathname);
+                    fprintf(stderr, "rmlinks: could not allocate memory to start worker thread for directory %s\n", pathname);
+                    pthread_mutex_unlock(&stdout_mutex);
+                }
+                strncpy(search_ptr, pathname, BUFF_SIZE);
+                err_num = pthread_create(&thread, NULL, search_directory, (void *)search_ptr);
+                if (err_num != 0)
+                {
+                    free(search_ptr);
+                    pthread_mutex_lock(&stdout_mutex);
+                    fprintf(stderr, "rmlinks: failed start worker thread for directory %s (%s)\n", pathname, strerror(err_num));
                     pthread_mutex_unlock(&stdout_mutex);
                 }
                 continue;
             }
             if ((S_ISREG(sb.st_mode) != 0) && (sb.st_ino == finode))
             {
-                if (strcmp(pathname, filename) != 0)
+                if (strcmp(pathname, search_file) != 0)
                 {
                     if (unlink(pathname) != 0)
                     {
@@ -309,6 +343,7 @@ void *search_directory(void *param)
     pthread_mutex_unlock(&thread_count_mutex);
     
     free(entry);
+    free(param);
     pthread_exit(NULL);
     return NULL;
 }
