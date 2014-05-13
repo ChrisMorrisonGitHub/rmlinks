@@ -31,7 +31,11 @@
 #include <pthread.h>
 #include "config.h"
 
-#define BUFF_SIZE 4096
+#define BUFF_SIZE   4096
+
+#define SUCCESS     0
+#define NONFATAL    1
+#define FATAL       2
 
 #if defined(__APPLE__) && defined(__MACH__) && !defined(_DARWIN_FEATURE_64_BIT_INODE)
 #define _DARWIN_FEATURE_64_BIT_INODE
@@ -68,19 +72,19 @@ int main(int argc, char *argv[])
     if ((argc == 2) && (argv[1][1] == 'h'))
     {
         print_usage(1);
-        return 0;
+        return SUCCESS;
     }
     
     if ((argc == 2) && (argv[1][1] == 'v'))
     {
         print_version();
-        return 0;
+        return SUCCESS;
     }
     
     if (argc < 3)
     {
         print_usage(0);
-        return 1;
+        return FATAL;
     }
     
     while ((c = getopt(argc, argv, "rshv")) != -1)
@@ -95,28 +99,28 @@ int main(int argc, char *argv[])
                 break;
             case 'h':
                 print_usage(1);
-                return 0;
+                return SUCCESS;
             case 'v':
                 print_version();
-                return 0;
+                return SUCCESS;
             case '?':
                 fprintf(stderr, "Unknown option \'-%c\'.\n", optopt);
-                return 2;
+                return FATAL;
             default:
                 print_usage(0);
-                return 1;
+                return FATAL;
         }
     }
     
     if (realpath(argv[argc - 1], search_file) == NULL)
     {
         fprintf(stderr, "Failed to resolve full path for '%s'. Please check that it exists and is accessable.\n", argv[argc - 1]);
-        return 1;
+        return FATAL;
     }
     if (realpath(argv[argc - 2], search_dir) == NULL)
     {
         fprintf(stderr, "Failed to resolve full path for '%s'. Please check that it exists and is accessable.\n", argv[argc - 2]);
-        return 1;
+        return FATAL;
     }
     
     nlen = strlen(search_dir) - 1;
@@ -125,32 +129,32 @@ int main(int argc, char *argv[])
     if (stat(search_dir, &buff1) == -1)
     {
         fprintf(stderr, "rmlinks: could not stat %s (%s).\n", search_dir, strerror(errno));
-        return 1;
+        return FATAL;
     }
     
     if (S_ISDIR(buff1.st_mode) == 0)
     {
         fprintf(stderr, "rmlinks: %s is not a directory.\n", search_dir);
-        return 1;
+        return FATAL;
     }
     
     if (lstat(search_file, &buff2) == -1)
     {
         fprintf(stderr, "rmlinks: could not stat %s (%s).\n", search_file, strerror(errno));
-        return 1;
+        return FATAL;
     }
     
     if (S_ISREG(buff2.st_mode) == 0)
     {
         fprintf(stderr, "rmlinks: %s is not a regular file.\n", search_file);
-        return 1;
+        return FATAL;
     }
     
     link_count = buff2.st_nlink;
     if (link_count == 1)
     {
         fprintf(stderr, "rmlinks: there are no hardlinks to %s.\n", search_file);
-        return 1;
+        return NONFATAL;
     }
     finode = buff2.st_ino;
     
@@ -163,7 +167,7 @@ int main(int argc, char *argv[])
     if (search_ptr == NULL)
     {
         fprintf(stderr, "rmlinks: could not allocate memory to start main worker thread.\n");
-        return 1;
+        return FATAL;
     }
     strncpy(search_ptr, search_dir, BUFF_SIZE);
     err_num = pthread_create(&master_thread, NULL, search_directory, (void *)search_ptr);
@@ -171,7 +175,7 @@ int main(int argc, char *argv[])
     {
         free(search_ptr);
         fprintf(stderr, "Failed to start the main thread (%s).\n", strerror(err_num));
-        return 1;
+        return FATAL;
     }
 
     for (;;)
@@ -200,9 +204,9 @@ int main(int argc, char *argv[])
     link_count--;
     post_link_count--;
     fprintf(stdout, "Successfully removed %d of %d links\n", (link_count - post_link_count), link_count);
-    if (post_link_count > 1) return 1;
+    if (post_link_count > 1) return FATAL;
     
-    return 0;
+    return SUCCESS;
 }
 
 void print_usage(int help)
