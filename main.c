@@ -46,6 +46,7 @@ int softlinks = 0;
 char search_dir[BUFF_SIZE];
 char search_file[BUFF_SIZE];
 ino_t finode = 0;
+dev_t fdevice = 0;
 unsigned int thread_count = 0;
 int down_tools = 0;
 
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
         return NONFATAL;
     }
     finode = buff2.st_ino;
+    fdevice = buff2.st_dev;
     
     pthread_mutex_init(&thread_count_mutex, NULL);
     pthread_mutex_init(&stdout_mutex, NULL);
@@ -311,7 +313,7 @@ void *search_directory(void *param)
                 }
                 continue;
             }
-            if ((S_ISREG(sb.st_mode) != 0) && (sb.st_ino == finode))
+            if ((S_ISREG(sb.st_mode) != 0) && (sb.st_ino == finode) && (sb.st_dev == fdevice))
             {
                 if (strcmp(pathname, search_file) != 0)
                 {

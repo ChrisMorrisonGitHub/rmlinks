@@ -242,8 +242,6 @@ rmlinks_SOURCES = \
 	main.c
 
 rmlinks_LDFLAGS = 
-
-#ifdef linux
 rmlinks_LDADD = -lpthread
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -765,7 +763,6 @@ uninstall-man: uninstall-man1
 	uninstall-am uninstall-binPROGRAMS uninstall-man \
 	uninstall-man1
 
-#endif
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
