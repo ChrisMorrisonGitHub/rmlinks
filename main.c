@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     }
     
     link_count = buff2.st_nlink;
-    if (link_count == 1)
+    if (link_count <= 1)
     {
         fprintf(stderr, "rmlinks: there are no hardlinks to %s.\n", search_file);
         return NONFATAL;
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
             }
 
             post_link_count = buff2.st_nlink;
-            if (post_link_count == 1) down_tools = 1; // Set the global flag to make all the threads clean up and exit.
+            if (post_link_count <= 1) down_tools = 1; // Set the global flag to make all the threads clean up and exit.
         }
         nanosleep((struct timespec[]){{0, 100000000}}, NULL);
         if (thread_count == 0) break;
@@ -248,6 +248,7 @@ void *search_directory(void *param)
     if (down_tools == 1)
     {
         free(param);
+        pthread_exit(NULL);
         return NULL;
     }
     
