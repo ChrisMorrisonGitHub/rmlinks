@@ -10,7 +10,7 @@ Installation
 
 As usual for GNU packages:
 
-    $ ./configure --prefix=/usr
+    $ ./configure
     $ make
     $ make install
 
